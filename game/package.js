@@ -2,6 +2,7 @@ window.noname_package = {
 	character: {
 		//经典标包＋神话再临
 		standard: "标准",
+		c309: "309大蛇",
 		shenhua: "神话再临",
 		extra: "神将",
 		//一将成名+界限突破
