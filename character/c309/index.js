@@ -1,4 +1,3 @@
-import { platform } from "os";
 import { lib, game, ui, get, ai, _status } from "../../noname.js";
 
 
@@ -105,9 +104,9 @@ game.import("character", function () {
 					return cards;
 				},
 				content: function () {
+					target.damage(2, "thunder")
+					target.recover(2)
 					player.loseHp();
-					target.damage(1, "thunder")
-					target.recover()
 				},
 				ai: {
 					basic: {
@@ -126,7 +125,7 @@ game.import("character", function () {
 			kampui: ["male", "prog", 3, ["fengtian", "hongtu", "yuanma"], ["name:陈|KamPui"]],
 			austin: ["male", "prog", "3/4", ["maibi", "debi", "yuanma"]],
 			jinye: ["male", "prog", "1/6/5", ["jingshi", "yequan", "yuanma"]],
-			vika: ["male", "prog", 3, ["vyixiang", "vbihuo", "yuanma"]],
+			vika: ["male", "prog", 5, ["vyixiang", "vbihuo", "yuanma"]],
 			shihong: ["male", 'prog', 4, ["bulai", 'nishui', "yuanma"]],
 			albert: ["male", "prog", 3, ["tangren", "lunzheng", "wuli"]],
 			wilson: ["male", "mech", 4, ["tangren", "feiti"]],
@@ -345,7 +344,7 @@ game.import("character", function () {
 					player.storage.hongtu_num = result.number;
 					player.storage.hongtu_suit = result.suit;
 					if(get.suit(card) == player.storage.hongtu_suit){
-						player.chooseBool("是否令目标弃1张手牌？").choice = function(){
+						player.chooseBool("是否令目标弃两张手牌？").choice = function(){
 							return (target.countCards("h") <= 1);
 						}
 					}else event.goto(6);
@@ -353,7 +352,7 @@ game.import("character", function () {
 					if (result.bool){
 						player.line(target);
 						target.chooseToDiscard("h", 1, true);
-					}else player.draw(1);
+					}else player.draw(2);
 					"step 6"
 
 					if(get.number(card) == player.storage.hongtu_num){
@@ -728,7 +727,6 @@ game.import("character", function () {
 				},
 			},
 			shaobi: {
-				usable: 2,
 				audio: 2,
 				enable: "phaseUse",
 				filter: function (event, player) {
@@ -740,13 +738,11 @@ game.import("character", function () {
 				filterTarget: function (card, player, target) {
 					return target.hp > 0 && player.countMark("maibi") > target.hp;
 				},
-				selectCard: [1, Infinity],
 				content: function () {
-					player.discard(event.cards)
+					target.damage("fire");
 					let ct = target.hp + 1;
 					if(ct < 3) ct = 3;
 					player.removeMark("maibi", ct);
-					target.damage("fire");
 				},
 				ai: {
 					damage: true,
@@ -760,9 +756,7 @@ game.import("character", function () {
 				}
 			},
 			reshaobi: {
-				usable: 1,
 				audio: 2,
-				selectCard: [1, Infinity],
 				enable: "phaseUse",
 				filter: function (event, player) {
 					return game.hasPlayer(function (current) {
@@ -774,7 +768,6 @@ game.import("character", function () {
 					return target.hp > 0 && player.countMark("maibi") > target.hp;
 				},
 				content: function () {
-					player.discard(event.cards)
 					let dmg = 1;
 					const shp=target.hp;
 					if (target.countCards("h") <= 0) dmg++;
@@ -910,8 +903,10 @@ game.import("character", function () {
 							player.changeZhuanhuanji("vyixiang_prevent");
 							trigger.cancel()
 							player.addMark("vyixiang");
-							player.draw();
-							player.gain(lib.card.ma.getMa(1));
+							if(player.storage.vyixiang_prevent)
+								player.draw();
+							else
+								player.gain(lib.card.ma.getMa(1));
 							if (player.countMark("vyixiang") >= 4){
 								player.loseHp();
 							}
@@ -946,7 +941,6 @@ game.import("character", function () {
 					"step 1";
 					let ct = player.countMark("vyixiang") - 1;
 					player.removeMark("vyixiang", ct);
-					player.maxHp += ct;
 					player.recover(ct);
 					player.draw(ct);
 					player.storage.vbihuo = true;
@@ -979,7 +973,7 @@ game.import("character", function () {
 					content(storage, player, skill) {
 						if (player.storage.vjuxiang != true) 
 							return "转换技，出牌阶段限两次，你弃置3枚【香】，回复一点体力，选择一名有手牌的角色，若如此做，你弃置其一张手牌牌，其视为拥有技能【耀武】直到其下个准备阶段开始";
-						return "转换技，出牌阶段限两次，你弃置随机2张【码】，失去一点体力，选择一名有手牌的角色，若如此做，其将体力上限改为其当前体力值（至多因此减一点体力上限），并获得技能【缠怨】直到其下个结束阶段开始";
+						return "转换技，出牌阶段限两次，你弃置随机2张【码】，失去一点体力，选择一名有手牌的角色，若如此做，其获得技能【缠怨】直到其下个结束阶段开始";
 					},
 				},
 				content: function() {
@@ -1000,7 +994,7 @@ game.import("character", function () {
 					if (player.storage.vjuxiang == true) {
 						player.removeMark("vyixiang", 3);
 						if(target != undefined){
-							for(let x = 0; x < 2; x++)
+							for(let x = 0; x < 1; x++)
 								if(target.getCards("h").length){
 									var card = target.getCards("h").randomGet();
 									target.discard(card);
@@ -1054,7 +1048,6 @@ game.import("character", function () {
 						player.discard(card);
 						player.damage(1);
 					}
-					player.discard({name: card.name})
 					if(player.hasSkill("mayu_global")) player.draw();
 				},
 				subSkill: {
@@ -1504,7 +1497,7 @@ game.import("character", function () {
 			},
 			stdyequan: {
 				enable: "phaseUse",
-				usbale: 1,
+				usable: 1,
 				content: function(){
 					var hp = player.hp;
 					player.draw(2);
@@ -1603,15 +1596,15 @@ game.import("character", function () {
 					player.gain(card);
 
 					if(player.hasUseTarget(card)){
-                        var ress = yield player.chooseButton(["是否使用" + get.translation(card) + "?", [card]]).set("ai", 
-                            button => _status.event.player.getUseValue(button.link) + 1 - 5 * (player.hasSkill("feiti") && player.countCards("h") == 1));
-                        var res = ress.bool;
-                    }else 
-                        var res = false;
-                    if (res) {
-                        game.delayx();
-                        player.chooseUseTarget(true, card, false);
-                    }
+						var ress = yield player.chooseButton(["是否使用" + get.translation(card) + "?", [card]]).set("ai", 
+							button => _status.event.player.getUseValue(button.link) + 1 - 5 * (player.hasSkill("feiti") && player.countCards("h") == 1));
+						var res = ress.bool;
+					}else 
+						var res = false;
+					if (res) {
+						game.delayx();
+						player.chooseUseTarget(true, card, false);
+					}
 
 					target.useCard({name: "sha"}, player, true);
 				}
@@ -1688,7 +1681,7 @@ game.import("character", function () {
 					if(player.countCards("h") == 0) return;
 					let result = yield player.chooseCard("使用一张牌", "h");
 					if(result.bool && player.hasUseTarget(result.cards[0])){
-                        player.chooseUseTarget(true, result.cards[0], false);
+						player.chooseUseTarget(true, result.cards[0], false);
 					}else{
 						player.gain(lib.card.ma.getMa())
 					}
@@ -1969,7 +1962,7 @@ game.import("character", function () {
 				filter: function(event, player){
 					return player.group == "elec";
 				},
-				usbale: 2,
+				usable: 2,
 				selectCard: [1, Infinity],
 				filterCard: { name: "dian" },
 				content: function*(event, map){
@@ -2085,7 +2078,8 @@ game.import("character", function () {
 					}
 				},
 				group: ["kuangnu_achieve", "kuangnu_fail"],
-			},
+			}
+			
 		},
 		translate: {
 			std_kampui: "标锦培",
@@ -2218,7 +2212,7 @@ game.import("character", function () {
 			pengji_info: "锁定技，你的回合限三次，当你使用牌后，你选择一名其他角色，其摸一张牌并进行拼点，若你没赢：则你受到一点伤害，否则你弃一张牌。",
 			kuangnu: "狂怒",	
 			kuangnu_info: "使命技，当你拼点没赢时，你摸3张牌，否则你回复一点体力；成功：你进入濒死状态，你失去该技能，回复一点体力并令所有其他角色翻面，获得技能【不来】；失败：你失去最后一张手牌，你死亡。",
-			qieyan: "切言",
+
 			stdjingshi: "京势",
 			stdjingshi_info: "出牌阶段限一次，你可以把X张牌当作【酒】使用（X为你已损失的体力值且至少为1）。",
 			stdyequan: "爷权",
