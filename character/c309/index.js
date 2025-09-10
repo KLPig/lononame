@@ -2178,7 +2178,11 @@ game.import("character", function () {
 						}
 						let trick = tricks.randomGet();
 						player.chooseUseTarget("视为使用" + get.translation(trick.name) + "(" + get.info(trick) + ")", trick, true)
-					}else player.addMark("qiuma");
+						player.draw(2);
+					}else{
+						player.draw(cnt);
+						player.addMark("qiuma");
+					}
 				},
 				subSkill: {
 					end: {
@@ -2252,7 +2256,7 @@ game.import("character", function () {
 			lingdian: "灵电",
 			lingdian_info: "电子势力技，①出牌阶段限2次，你可以弃置任意张【电】并选择不大于该数量的角色，这些角色依次横置并交给你一张牌；②摸牌阶段开始时，你可以跳过该阶段，对一名角色造成一点雷电伤害。",
 			qiuma: "求码",
-			qiuma_info: "出牌阶段限一次，你可以弃置任意张牌并摸等量的牌，若你以此法弃置了某些区域的所有牌，你多摸等量牌；你进行判定：若判定结果的点数大于你应获得的牌的数目，则你改为视为使用一张随机的锦囊牌，切此技能视为未发动过。",
+			qiuma_info: "出牌阶段限一次，你可以弃置任意张牌并摸等量的牌，若你以此法弃置了某些区域的所有牌，你多摸等量牌；你进行判定：若判定结果的点数大于你应获得的牌的数目，则你改为视为使用一张随机的锦囊牌，摸两张牌并令此技能视为未发动过。",
 			sp_kampui: "SP锦培",
 			sp_kampui_prefix: "SP",
 			sp_albert: "SP王子真",
