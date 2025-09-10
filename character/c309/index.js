@@ -1,3 +1,4 @@
+import { platform } from "os";
 import { lib, game, ui, get, ai, _status } from "../../noname.js";
 
 
@@ -2084,6 +2085,34 @@ game.import("character", function () {
 					}
 				},
 				group: ["kuangnu_achieve", "kuangnu_fail"],
+			},
+			qieyan: {
+				trigger: {player: ["gainAfter"]},
+				selectCard: 2,
+				position: "he",
+				filterCard: true,
+				selectTarget: 1,
+				filterTarget: true,
+				filter: function(event, player){
+					return player.countCards("he") >= 2;
+				},
+				content: function(event){
+					let types = [];
+					let cards = event.cards;
+					let target = event.targets[0];
+					for(var i = 0; i < cards.length; i++)
+						if(!(get.type(cards[i]) in types))
+							types.push(get.type(cards[i]));
+					if(types.length > 1) player.loseHp();
+					player.give(cards, target);
+					if("basic" in types) target.useCard({
+						name: "sha",
+						nature: "stab"
+					}, true)
+					if("trick" in types) target.useCard("tuixinzhifu", true);
+					if("delay" in types) target.useCard("dongzhuxianji", true);
+					if("equip" in types) target.useCard("xie", true);
+				}
 			}
 			
 		},
@@ -2218,7 +2247,7 @@ game.import("character", function () {
 			pengji_info: "锁定技，你的回合限三次，当你使用牌后，你选择一名其他角色，其摸一张牌并进行拼点，若你没赢：则你受到一点伤害，否则你弃一张牌。",
 			kuangnu: "狂怒",	
 			kuangnu_info: "使命技，当你拼点没赢时，你摸3张牌，否则你回复一点体力；成功：你进入濒死状态，你失去该技能，回复一点体力并令所有其他角色翻面，获得技能【不来】；失败：你失去最后一张手牌，你死亡。",
-
+			qieyan: "切言",
 			stdjingshi: "京势",
 			stdjingshi_info: "出牌阶段限一次，你可以把X张牌当作【酒】使用（X为你已损失的体力值且至少为1）。",
 			stdyequan: "爷权",
