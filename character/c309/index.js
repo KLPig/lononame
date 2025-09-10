@@ -138,6 +138,8 @@ game.import("character", function () {
 
 			sp_kampui: ["male", "prog", 3, ["touyuan", "mayi", "lingdian", "yuanma"], ["doublegroup:prog:elec"]],
 			sp_albert: ["male", "n309", 3, ["tangren", "pengji", "kuangnu"]],
+			sp_austin: ["male", "prog", 4, ["qieyan", "yixin"]],
+			sp_wilson: ["male", "prog", 4, ["qiuma"]],
 
 			shen_kampui: ["male", "prog", "1/4/2", ["drlt_qianjie", "fengtian", "hongtu", "jinsheng", "yuanma"]],
 			shen_austin: ["male", "prog", 2, ["jiamei", "lushen", "zuofu"]],
@@ -2078,6 +2080,118 @@ game.import("character", function () {
 					}
 				},
 				group: ["kuangnu_achieve", "kuangnu_fail"],
+			},
+			qieyan: {
+				trigger: { player: ["gainAfter"] },
+				filter: function(event, player){
+					var num = event.getl(player).cards2.length;
+					if (event.getg) num = Math.max(num, event.getg(player).length);
+					return num > 1;
+				},
+				content: function*(event, map){
+					let player = map.player;
+					let result = yield player.chooseCardTarget({
+						selectCard: 2,
+						filterCard: true,
+						selectTarget: 1,
+						filterTarget: function(card, player, target){
+							return player != target;
+						}
+					});
+					let target = result.targets[0];
+					let cards = result.cards;
+					let types = [];
+					for(var i = 0; i < cards.length; i++){
+						let t = get.type(cards[i]);
+						if(t == "delay") t = "trick";
+						if(types.length > 0 && types[0] == t);
+						else types.push(t);
+					}
+					player.give(cards, target);
+					if("basic" == types[0] || "basic" == types[1]) target.chooseUseTarget(true, "tao", true)
+					if("trick" == types[0] || "trick" == types[1]) target.chooseUseTarget(true, {name: "sha", nature: "stab"}, true)
+					if("equip" == types[0] || "equip" == types[1]) target.chooseUseTarget(true, "mxie", true)
+					if(types.length > 1) player.damage(1)
+				}
+			},
+			yixin: {
+				usable: 1,
+				trigger: { player: "damageAfter" },
+				filter: function(event, player){
+					return true;
+				},
+				content: function(){
+					"step 0"
+					player.loseHp(trigger.num);
+					"step 1"
+					player.draw(trigger.num * 2);
+				},
+				subSkill: {
+					dying: {
+						trigger: { player: "dying" },
+						content: function(){
+							let cnt = Math.min(player.maxHp - 2, player.countCards("hej"));
+							player.discard(player.getCards("hej"))
+							player.loseHp();
+							for(var i = 0; i < cnt; i++){
+								player.draw(2);
+								if(player.countCards("h"))
+									player.chooseToDiscard("h", 1, true);
+							}
+						}
+					}
+				},
+				group: ["yixin_dying"],
+			},
+			qiuma: {
+				enable: "phaseUse",
+				marktext: "求",
+				intro: {
+					name: "求码",
+					content: "本回合已使用过该技能。"
+				},
+				selectCard: [1, Infinity],
+				position: "he",
+				filterCard: true,
+				filter: function(event, player){
+					return player.countCards("he") > 0 && !player.countMark("qiuma");
+				},
+				content: function*(event, map){
+					let player = map.player;
+					let hh = player.countCards("h") > 0;
+					let he = player.countCards("e") > 0;
+					let cnt = event.cards.length;
+					player.discard(event.cards);
+					if(hh && !player.countCards("h")) cnt++;
+					if(he && !player.countCards("e")) cnt++;
+					let result = yield player.judge(function(card){
+						if(cnt > get.number(card)) return 10;
+						return cnt;
+					})
+					if(cnt > result.number){
+						let tricks = [];
+						for(var i in lib.card){
+							let card = lib.card[i];
+							if(card != undefined && get.type(card) == "trick"){
+								tricks.push(card)
+							}
+						}
+						let trick = tricks.randomGet();
+						player.chooseUseTarget("视为使用" + get.translation(trick.name) + "(" + get.info(trick) + ")", trick, true)
+					}else player.addMark("qiuma");
+				},
+				subSkill: {
+					end: {
+						trigger: { player: "phaseEnd"},
+						filter: function(event, player){
+							return true;
+						},
+						content: function(){
+							player.removeMark("qiuma", player.countMark("qiuma"))
+						}
+					}
+				},
+				group: ["qiuma_end"]
 			}
 			
 		},
@@ -2137,10 +2251,16 @@ game.import("character", function () {
 			mayi4: '码忆【固】',
 			lingdian: "灵电",
 			lingdian_info: "电子势力技，①出牌阶段限2次，你可以弃置任意张【电】并选择不大于该数量的角色，这些角色依次横置并交给你一张牌；②摸牌阶段开始时，你可以跳过该阶段，对一名角色造成一点雷电伤害。",
+			qiuma: "求码",
+			qiuma_info: "出牌阶段限一次，你可以弃置任意张牌并摸等量的牌，若你以此法弃置了某些区域的所有牌，你多摸等量牌；你进行判定：若判定结果的点数大于你应获得的牌的数目，则你改为视为使用一张随机的锦囊牌，切此技能视为未发动过。",
 			sp_kampui: "SP锦培",
 			sp_kampui_prefix: "SP",
 			sp_albert: "SP王子真",
 			sp_albert_prefix: "SP",
+			sp_austin: "SP舰艇",
+			sp_austin_prefix: "SP",
+			sp_wilson: "SP唐将军",
+			sp_wilson_prefix: "SP",
 			prog: "编程",
 			prog1: "编程大蛇 1145",
 			prog2: "神话编译 1919",
@@ -2212,7 +2332,10 @@ game.import("character", function () {
 			pengji_info: "锁定技，你的回合限三次，当你使用牌后，你选择一名其他角色，其摸一张牌并进行拼点，若你没赢：则你受到一点伤害，否则你弃一张牌。",
 			kuangnu: "狂怒",	
 			kuangnu_info: "使命技，当你拼点没赢时，你摸3张牌，否则你回复一点体力；成功：你进入濒死状态，你失去该技能，回复一点体力并令所有其他角色翻面，获得技能【不来】；失败：你失去最后一张手牌，你死亡。",
-
+			qieyan: "切言",
+			qieyan_info: "当你一次性获得或弃置至少两张牌后，你可以将两张牌交给一名其他角色，然后若这两张牌：有基本牌：其须视为使用一张【桃】；有锦囊牌：其须视为使用一张刺【杀】；有装备牌：其须视为使用一张【械】；类型不同：你受到一点伤害。",
+			yixin: "遗心",
+			yixin_info: "①当你受到伤害后，你可以失去等量的体力并摸双倍的牌。②当你进入濒死状态，你可以失去一点体力，弃置区域内的所有牌，并执行等量次（至多为你的体力上限-2）：你摸两张牌，然后弃一张牌。",
 			stdjingshi: "京势",
 			stdjingshi_info: "出牌阶段限一次，你可以把X张牌当作【酒】使用（X为你已损失的体力值且至少为1）。",
 			stdyequan: "爷权",
@@ -2250,7 +2373,7 @@ game.import("character", function () {
 				prog2shen: ["shen_kampui", "shen_austin"],
 				tang: ["wilson", "albert"],
 				idk: ["shihong", "zsh"],
-				sp309: ["sp_kampui", "sp_albert"],
+				sp309: ["sp_kampui", "sp_albert", "sp_austin", "sp_wilson"],
 				prog3: ["re_kampui", "re_austin", "sb_kampui"],
 			},
 		},
