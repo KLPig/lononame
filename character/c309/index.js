@@ -2086,35 +2086,6 @@ game.import("character", function () {
 				},
 				group: ["kuangnu_achieve", "kuangnu_fail"],
 			},
-			qieyan: {
-				trigger: {player: ["gainAfter"]},
-				selectCard: 2,
-				position: "he",
-				filterCard: true,
-				selectTarget: 1,
-				filterTarget: true,
-				filter: function(event, player){
-					return player.countCards("he") >= 2;
-				},
-				content: function(event){
-					let types = [];
-					let cards = event.cards;
-					let target = event.targets[0];
-					for(var i = 0; i < cards.length; i++)
-						if(!(get.type(cards[i]) in types))
-							types.push(get.type(cards[i]));
-					if(types.length > 1) player.loseHp();
-					player.give(cards, target);
-					if("basic" in types) target.useCard({
-						name: "sha",
-						nature: "stab"
-					}, true)
-					if("trick" in types) target.useCard("tuixinzhifu", true);
-					if("delay" in types) target.useCard("dongzhuxianji", true);
-					if("equip" in types) target.useCard("xie", true);
-				}
-			}
-			
 		},
 		translate: {
 			std_kampui: "标锦培",
