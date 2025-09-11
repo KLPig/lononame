@@ -124,21 +124,23 @@ game.import("character", function () {
 			std_vika: ["male", "prog", 3, ["stdyixiang", "stdmizong"]],
 			kampui: ["male", "prog", 3, ["fengtian", "hongtu", "yuanma"], ["name:陈|KamPui"]],
 			austin: ["male", "prog", "3/4", ["maibi", "debi", "yuanma"]],
-			jinye: ["male", "prog", "1/6/5", ["jingshi", "yequan", "yuanma"]],
-			vika: ["male", "prog", 5, ["vyixiang", "vbihuo", "yuanma"]],
+			jinye: ["male", "prog", "3/6", ["jingshi", "yequan", "yuanma"]],
+			vika: ["male", "prog", 4, ["vyixiang", "vbihuo", "yuanma"]],
 			shihong: ["male", 'prog', 4, ["bulai", 'nishui', "yuanma"]],
 			albert: ["male", "prog", 3, ["tangren", "lunzheng", "wuli"]],
 			wilson: ["male", "mech", 4, ["tangren", "feiti"]],
 			klpig: ["male", "prog", 3, ["mayu", "mashen", "kuaizai", "yuanma"]],
+			/*
 			re_kampui: ["male", "prog", "1/3/2", ["drlt_qianjie", "fengtian", "huituo", "bazhen", "yuanma"], ["name:陈|KamPui"]],
 			re_austin: ["male", "prog", "2/4", ["remaibi", "redebi"]],
 			sb_kampui: ["male", "prog", 4, ["drlt_qianjie", "jsrgxushi", "shence", "yuanma"], ["name:陈|KamPui"]],
+			*/
 			zsh: ["male", "prog", "2/3", ["tangren", "nishui", "xiaoxue"]],
 			khari: ["male", "prog", 4, ["yima", "jinpei", "yuanma"]],
 
 			sp_kampui: ["male", "prog", 3, ["touyuan", "mayi", "lingdian", "yuanma"], ["doublegroup:prog:elec"]],
 			sp_albert: ["male", "n309", 3, ["tangren", "pengji", "kuangnu"]],
-			sp_austin: ["male", "prog", 4, ["qieyan", "yixin"]],
+			sp_austin: ["male", "prog", 3, ["qieyan", "yixin"]],
 			sp_wilson: ["male", "prog", 4, ["qiuma"]],
 
 			shen_kampui: ["male", "prog", "1/4/2", ["drlt_qianjie", "fengtian", "hongtu", "jinsheng", "yuanma"]],
@@ -149,28 +151,68 @@ game.import("character", function () {
 			yuanma: {
 				audio: 2,
 				groupSkill: "prog",
-				trigger: { player: "gainAfter" },
-				derivation: ["reqicai", "reyingzi", "reguicai", "reweimu"],
+				trigger: { player: "dieBefore" },
 				forced: true,
+				skillAnimation: true,
+				animationColor: "thunder",
 				filter: function(event, player){
-					return player.group == "prog" && player.countCards("h", "ma") >= 2;
+					return player.group == "prog";
+				},
+				mod: {
+					maxHandcard(player, num) {
+						return num + player.countCards("h", "ma");
+					},
 				},
 				content: function(){
-					"step 0"
-					const ct = player.countCards("h", "ma");
-					if (ct >= 2){
-						player.addSkills("reqicai")
+					trigger.cancel();
+					player.awakenSkill("yuanma");
+					player.maxHp = Math.max(2, player.countCards("h", "ma"))
+					player.recover(4 - player.hp)
+					player.storage.yuanma = true;
+					player.clearSkills()
+					var skills = [];
+					if (!_status.characterlist) {
+						lib.skill.pingjian.initList();
 					}
-					if (ct >= 5){
-						player.addSkills("reyingzi")
+					for (const name of _status.characterlist) {
+						if (!lib.character[name][3]) continue;
+						skills.addArray(
+							lib.character[name][3].filter(skill => {
+								var info = get.info(skill);
+								return info;
+							})
+						);
 					}
-					if (ct >= 8){
-						player.addSkills("reguicai")
-					}
-					if (ct >= 10){
-						player.addSkills("reweimu")
-					}
-				}
+					let skill = skills.slice().randomGet();
+					player.addSkill(skill);
+					player.discard(player.getCards("hej"));
+					player.draw(4);
+				},
+
+				subSkill: {
+					lose: {
+						trigger: { global: "gameStart" },
+						prompt: "是否失去【源码】？",
+						content: function(){
+							player.removeSkill("yuanma")
+						}
+					},
+					cost: {
+						unqiue: true,
+						forced: true,
+						trigger: { player: "phaseZhunbeiBegin" },
+						filter: function(event, player){
+							return !player.storage.yuanma_cost;
+						},
+						content: function(){
+							player.awakenSkill("yuanma_cost");
+							player.storage.yuanma_cost = true;
+							player.loseMaxHp()
+							player.recover(player.maxHp - player.hp);
+						}
+					},
+				},
+				group: ["yuanma_lose", "yuanma_cost"]
 			},
 
 			fengtian: {
@@ -621,11 +663,25 @@ game.import("character", function () {
 					trigger.cancel();
 					const ct = player.countCards("h");
 					player.discard(player.getCards("h"));
-					player.addMark("maibi", ct + 2);
+					player.addMark("maibi", ct);
 					player.gain(lib.card.ma.getMa(1), "gain2");
 					player.addTempSkills(["lihun"]);
 					player.turnOver();
 				},
+				subSkill: {
+					draw: {
+						trigger: { player: "phaseJieshuBegin" },
+						forced: true, 
+						filter: function(event, player){
+							return player.countMark("maibi") > 0;
+						},
+						content: function(){
+							player.removeMark("maibi");
+							player.draw();
+						}
+					}
+				},
+				group: ["maibi_draw"]
 			},
 			remaibi: {
 				marktext: "笔",
@@ -680,7 +736,7 @@ game.import("character", function () {
 				skillAnimation: true,
 				animationColor: "thunder",
 				audio: 1,
-				derivation: ["jieyin", "shaobi"],
+				derivation: ["shaobi"],
 				unique: true,
 				juexingji: true,
 				//priority:10,
@@ -698,7 +754,7 @@ game.import("character", function () {
 					player.draw(2);
 					player.hp += 1;
 					"step 2";
-					player.addSkills(["jieyin", "shaobi"]);
+					player.addSkills(["shaobi"]);
 					player.storage.debi = 1
 				},
 			},
@@ -740,11 +796,17 @@ game.import("character", function () {
 				filterTarget: function (card, player, target) {
 					return target.hp > 0 && player.countMark("maibi") > target.hp;
 				},
+				selectCard: [2, Infinity],
+				filterCard: true,
+				position: "he",
 				content: function () {
+					player.discard(event.cards);
 					target.damage("fire");
+					target.draw(target.maxHp - target.hp);
 					let ct = target.hp + 1;
-					if(ct < 3) ct = 3;
+					if(ct < 2) ct = 2;
 					player.removeMark("maibi", ct);
+					player.draw(1);
 				},
 				ai: {
 					damage: true,
@@ -932,6 +994,7 @@ game.import("character", function () {
 				skillAnimation: true,
 				animationColor: "thunder",
 				derivation: ["vjuxiang"],
+				trigger: { player: "dying" },
 				filter: function (event, player) {
 					if( player.countMark("vyixiang") > 1 && !player.storage.vbihuo) return true;
 				},
@@ -962,7 +1025,7 @@ game.import("character", function () {
 				zhuanhuanji: true,
 				marktext: "☯",
 				enable: "phaseUse",
-				usable: 2,
+				usable: 1,
 				audio: 2,
 				derivation: ["new_reyaowu", "rechanyuan"],
 				filter: function(event, player) {
@@ -974,8 +1037,8 @@ game.import("character", function () {
 				intro: {
 					content(storage, player, skill) {
 						if (player.storage.vjuxiang != true) 
-							return "转换技，出牌阶段限两次，你弃置3枚【香】，回复一点体力，选择一名有手牌的角色，若如此做，你弃置其一张手牌牌，其视为拥有技能【耀武】直到其下个准备阶段开始";
-						return "转换技，出牌阶段限两次，你弃置随机2张【码】，失去一点体力，选择一名有手牌的角色，若如此做，其获得技能【缠怨】直到其下个结束阶段开始";
+							return "转换技，出牌阶段限1次，你弃置3枚【香】，弃置1张手牌，选择一名有手牌的角色，若如此做，其回复一点体力，视为拥有技能【耀武】直到其下个准备阶段开始";
+						return "转换技，出牌阶段限1次，你弃置随机2张【码】，失去1点体力，选择一名有手牌的角色，若如此做，其摸3张牌，获得技能【缠怨】直到其下个结束阶段开始";
 					},
 				},
 				content: function() {
@@ -984,7 +1047,6 @@ game.import("character", function () {
 					var target = undefined;
 					"step 1"
 					player.chooseTarget("选择一名有手牌的角色", function (card, player, target) {
-						if (player == target) return false;
 						return target.countCards("h") > 0;
 					}).set("ai", function (target) {
 						return get.attitude(_status.event.player, target);
@@ -995,26 +1057,21 @@ game.import("character", function () {
 					} else return ;
 					if (player.storage.vjuxiang == true) {
 						player.removeMark("vyixiang", 3);
+						player.chooseToDiscard("h", 1)
 						if(target != undefined){
-							for(let x = 0; x < 1; x++)
-								if(target.getCards("h").length){
-									var card = target.getCards("h").randomGet();
-									target.discard(card);
-								}
+							target.recover()
 							if (!target.hasSkill("new_reyaowu"))
 								target.addTempSkills("new_reyaowu", "phaseZhunbeiBegin");
 						}
-						player.recover(1);
 					}else{
 						player.discard(player.getCards("h", "ma").randomGet())
 						player.discard(player.getCards("h", "ma").randomGet())
+						player.loseHp();
 						if(target != undefined){
-							if(target.maxHp > target.hp)
-							target.loseMaxHp(1);
+							target.draw(3);
 							if (!target.hasSkill("rechanyuan"))
 								target.addTempSkills("rechanyuan", "phaseJieshuBegin");
 						}
-						player.loseHp(1);
 					}
 				},
 				ai: {
@@ -1107,7 +1164,6 @@ game.import("character", function () {
 				viewAsFilter: function(player){
 					return player.countCards("he") > 1;
 				},
-				derivation: [],
 				group: ["lunzheng_cmp"],
 				filterCard: true,
 				subSkill: {
@@ -1169,43 +1225,26 @@ game.import("character", function () {
 			mayu: {
 
 				subSkill: {
-					damage: {
-						forced: true,
-						trigger: { player: "damageBefore" },
-						content: function() {
-							"step 0"
-							if(!player.countCards("h")) event.finish();
-							player.discard(player.getCards("h").randomGet())
-							trigger.cancel()
-						}
-					},
-					recover: {
-						forced: true,
-						trigger: { player: "recoverBefore" },
-						content: function() {
-							"step 0"
-							player.draw()
-							trigger.cancel()
-						}
-					},
-					hp: {
-						forced: true,
-						trigger: { player: "phaseDrawAfter", global: "gameStart" },
-						content: function(){
-							let amh = player.countCards("h", {name:"ma"}) + 1 - player.maxHp;
-							if(amh > 0) player.gainMaxHp(amh)
-							else player.loseMaxHp(-amh);
-							player.hp = player.maxHp;
-							player.loseHp(1)
+					sha: {
+						enable: ["chooseToUse", "chooseToResponse"],
+						viewAsFilter: function(player){
+							return player.countCards("h", "ma") >= 3;
 						},
-						mod: {
-							maxHandcard: function (player, num) {
-								return num + player.countCards("h", {name: "ma"});
-							},
+						selectCard: 3,
+						filterCard: {name: "ma"},
+						viewAs: {name: "sha"},
+					},
+					shan: {
+						enable: ["chooseToUse", "chooseToResponse"],
+						viewAsFilter: function(player){
+							return player.countCards("h", "ma") >= 3;
 						},
+						selectCard: 3,
+						filterCard: {name: "ma"},
+						viewAs: {name: "shan"},
 					},
 					global: {
-						group: ["mayu_damage", "mayu_recover", "mayu_hp"]
+						group: ["mayu_sha", "mayu_shan"]
 					},
 
 				},
@@ -1215,14 +1254,19 @@ game.import("character", function () {
 					var players = game.filterPlayer();
 					player.line(players)
 					for(var x = 0; x < players.length; x++){
-						players[x].gain(lib.card.ma.getMa(Math.round(players[x].maxHp / 2 + players[x].hp / 2)))
 						players[x].addSkills("mayu_global");
 					}
-					player.gain(lib.card.ma.getMa(2));
 					game.broadcastAll(function () {
 						lib.inpile.add("ma");
 					});
-					game.cardsGotoPile(lib.card.ma.getMa(80), () => {
+					let mas = [];
+					for(var i = 0; i < 120; i++){
+						mas.push(game.createCard2("ma", "heart", 8))
+						mas.push(game.createCard2("ma", "diamond", 8))
+						mas.push(game.createCard2("ma", "spade", 8))
+						mas.push(game.createCard2("ma", "club", 8))
+					}
+					game.cardsGotoPile(mas, () => {
 						return ui.cardPile.childNodes[get.rand(0, ui.cardPile.childNodes.length - 1)];
 					});
 				}
@@ -1230,18 +1274,13 @@ game.import("character", function () {
 			kuaizai: {
 				usable: 1,
 				enable: "phaseUse",
+				selectTarget: 1,
+				filterTarget: function(card, player, target){
+					return true;
+				},
 				content: function(){
-					"step 0"
-					player.chooseTarget();
-					"step 1"
-					if(result.bool){
-						let target = result.targets[0];
-						let amh = target.countCards("h", {name:"ma"}) + 1 - target.maxHp;
-						if(amh > 0) target.gainMaxHp(amh)
-						else target.loseMaxHp(-amh);
-						target.hp = target.maxHp;
-						target.loseHp(1)
-					}
+					player.line(event.targets[0])
+					event.targets[0].discard(event.targets[0].getCards("he", "ma"))
 				}
 			},
 			mashen: {
@@ -1284,7 +1323,7 @@ game.import("character", function () {
 						forced: true,
 						trigger: {player: "phaseUseBegin"},
 						content: function(){
-							player.addMark("mashen", Math.min(5, player.hp));
+							player.addMark("mashen", Math.min(5, player.countCards("he", "ma")));
 						}
 					},
 					del: {
@@ -2273,7 +2312,7 @@ game.import("character", function () {
 			lingdian: "灵电",
 			lingdian_info: "电子势力技，①出牌阶段限2次，你可以弃置任意张【电】并选择不大于该数量的角色，这些角色依次横置并交给你一张牌；②摸牌阶段开始时，你可以跳过该阶段，对一名角色造成一点雷电伤害。",
 			qiuma: "求码",
-			qiuma_info: "出牌阶段限一次，你可以弃置任意张牌并摸等量的牌，若你以此法弃置了某些区域的所有牌，你多摸等量牌；你进行判定：若判定结果的点数大于你应获得的牌的数目，则你改为视为使用一张随机的锦囊牌，摸两张牌并令此技能视为未发动过。",
+			qiuma_info: "出牌阶段限一次，你可以弃置任意张牌并摸等量的牌，若你以此法弃置了某些区域的所有牌，你多摸等量牌且卜算双倍的牌；你进行判定：若判定结果的点数大于你应获得的牌的数目，则你改为视为使用一张随机的锦囊牌，摸两张牌并令此技能视为未发动过。",
 			sp_kampui: "SP锦培",
 			sp_kampui_prefix: "SP",
 			sp_albert: "SP王子真",
@@ -2295,11 +2334,11 @@ game.import("character", function () {
 			re_austin: "界舰艇",
 			re_austin_prefix: "界",
 			maibi: "买笔",
-			maibi_info: "摸牌阶段开始时，你可以弃置所有手牌，并获得X个【笔】标记（X为2+你因此弃置的牌数），若如此做，你跳过摸牌阶段，翻面，获得一张【码】并获得【离魂】直到回合结束。",
+			maibi_info: "摸牌阶段开始时，你可以弃置所有手牌，并获得等量个【笔】标记，若如此做，你跳过摸牌阶段，翻面，获得一张【码】并获得【离魂】直到回合结束。",
 			debi: "得笔",
-			debi_info: "觉醒技，准备阶段，若你的【笔】标记数量不小于6，你减一点体力上限，将性别改为女，回复一点体力，摸两张牌并获得技能【结姻】【烧笔】。",
+			debi_info: "觉醒技，准备阶段，若你的【笔】标记数量不小于6，你减一点体力上限，将性别改为女，回复一点体力，摸两张牌并获得技能【烧笔】。",
 			shaobi: "烧笔",
-			shaobi_info: "出牌阶段，你可以选择一名体力值小于你【笔】数的角色，你弃置X个【笔】标记（X为1+其体力值，且至少为3），令其受到一点火焰伤害。",
+			shaobi_info: "出牌阶段，你可以弃置至少两张牌并，选择一名角色并失去X个【笔】标记（X为1+其体力值，且至少为2），令其受到一点火焰伤害并摸等于其已损失体力值的牌，你摸一张牌。",
 			remaibi: "买笔",
 			remaibi_info: "摸牌阶段开始时，你可以弃置所有手牌，并获得X个【笔】标记（X为2+你因此弃置的牌数），若如此做，你跳过摸牌阶段，翻面，摸一张牌并获得技能【离魂】【闭月】直到回合结束；你的额定摸牌数+Y（Y为你的【笔】数量-4，且至少为0）。",
 			redebi: "得笔",
@@ -2307,17 +2346,17 @@ game.import("character", function () {
 			reshaobi: "烧笔",
 			reshaobi_info: "出牌阶段，你可以选择一名体力值小于你【笔】数的角色，你弃置X个【笔】标记（X为1+其体力值，且至少为3），令其受到一点火焰伤害；若其没有手牌，则改为其受到两点火焰伤害。你失去Y个【笔】（Y为其因此扣减的体力值-1，至多为你的【笔】数）",
 			jingshi: "京势",
-			jingshi_info: "①出牌阶段，你可以把【影】当作【码】使用；②锁定技，当你回复一点体力时，你摸一张牌，你获得技能【崩坏】直到回合结束。",
+			jingshi_info: "①出牌阶段，你可以把【码】当作【桃】使用；②锁定技，当你回复一点体力时，你摸一张牌，你获得技能【崩坏】直到回合结束。",
 			yequan: "爷权",
 			yequan_info: "①出牌阶段限一次，你可以失去任意点体力（至多为2X，X为你的体力值）并获得等量张【码】；②锁定技，你的手牌上限始终为2X（X为你的【码】数）。",
 			yuanma: "源码",
-			yuanma_info: "编程势力技，锁定技，出牌阶段，若你手牌中含有的【码】数不小于以下数目，你获得以下技能：2:【奇才】；5:【英姿】；8:【鬼才】；10:【帷幕】。",
+			yuanma_info: "编程势力技，①游戏开始时，你可令此技能无效。②锁定技，你的手牌上限+X（X为你的【码】数）。③觉醒技，准备阶段开始时，你减一点体力上限并回复所有体力；觉醒技，你死亡时，改为失去所有技能，将体力上限调整为你的【码】数（至少为2），回复体力至4点并获得随机一个技能。",
 			vyixiang: "异香",
 			vyixiang_info: "锁定技，转换技，当你成为阴：普通锦囊牌；阳：基本牌的目标时，取消其对你的效果，你获得一枚【香】标记并获得一张【码】；然后若你的【香】标记不小于3，你失去一点体力。",
 			vbihuo: "避祸",
-			vbihuo_info: "限定技，出牌阶段，你可以移去所有【香】，增加等量体力上限，回复等量体力并摸等量张牌，然后你获得技能【巨香】。",
+			vbihuo_info: "限定技，出牌阶段或你进入濒死状态时，你可以移去所有【香】，增加等量体力上限，回复等量体力并摸等量张牌，然后你获得技能【巨香】。",
 			vjuxiang: "巨香",
-			vjuxiang_info: "转换技，出牌阶段限两次，选择一名有手牌的角色，若如此做：阴：你弃置3枚【香】，回复一点体力，依次弃置其两张手牌，其视为拥有技能【耀武】直到其下个准备阶段开始；阳：你随机弃置两张【码】，失去一点体力，其将体力上限改为其当前体力值（至多以此法失去一点体力上限），并获得技能【缠怨】直到其下个结束阶段开始。",
+			vjuxiang_info: "转换技，出牌阶段限1次，选择一名有手牌的角色，若如此做：阴：你弃置3枚【香】与1张牌，回复一点体力，其回复一点体力，视为拥有技能【耀武】直到其下个准备阶段开始；阳：你随机弃置两张【码】，失去一点体力，其摸3张牌并获得技能【缠怨】直到其下个结束阶段开始。",
 			tangren: "唐人",
 			tangren_info: "①锁定技，摸牌阶段开始时，你摸2张牌；②锁定技，当你使用牌时，你随机展示一张手牌，由你选择：1.使用之；2.弃置之，然后受到一点伤害。③当你发动【唐人】后，若你受【码域】影响，你摸一张牌。",
 			feiti: "飞踢",
@@ -2327,11 +2366,11 @@ game.import("character", function () {
 			wuli: "无理",
 			wuli_info: "锁定技，当你成为【杀】的目标时，取消之并获得一张【码】。",
 			mayu: "码域",
-			mayu_info: "锁定技，游戏开始时，你将40张【码】加入游戏，所有玩家立即根据其体力值获得【码】，一名角色受到伤害/回复体力时，改为随机弃置/摸等量的手牌/牌；一名角色的摸牌阶段结束后，其将体力上限/体力值改为其【码】数+1/+0。",
+			mayu_info: "锁定技，游戏开始时，你将480张不同颜色的【码】加入游戏，所有玩家每回合各限一次，可以将3张【码】当作【杀】/【闪】使用或打出。",
 			kuaizai: "快载",
-			kuaizai_info: "出牌阶段限一次，你令一名角色将体力上限/体力值改为其拥有的【码】数+1/0。",
+			kuaizai_info: "出牌阶段限一次，你令一名角色弃置手牌中所有的【码】。",
 			mashen: "码神",
-			mashen_info: "回合内限X次（X为你的体力值,至多为五），出牌阶段开始时，你可以由随机12张神属性的基本/锦囊/装备牌中选择一张并获得。",
+			mashen_info: "回合内限X次（X为你的【码】数，至多为五），出牌阶段开始时，你可以由随机12张神属性的基本/锦囊/装备牌中选择一张并获得。",
 			jiamei: "假寐",
 			jiamei_info: "①锁定技，游戏开始时，你获得3个【寐】标记。②锁定技，当你受到伤害时，若你有【寐】/手牌，你弃置一个【寐】/一张随机手牌，然后你令伤害值-X（X为你的【寐】数）。③摸牌阶段结束后，你摸两张牌，然后弃置X张手牌。④你的手牌上限+X。",
 			lushen: "鹿神",
@@ -2386,16 +2425,17 @@ game.import("character", function () {
 			"#debi2": "我有了！",
 			"#shaobi1": "师傅，别搞～",
 			"#shaobi2": "Master, don't do it~",
+			pack1: "309之【抑】",
+			pack2: "309之【扬】",
+			pack3: "309之【顿】",
+			pack4: "309之【挫】"
 		},
 		characterSort: {
 			c309: {
-				fengp: ["std_kampui", 'std_austin', 'std_vika', "std_jinye"],
-				prog2: ["kampui", "austin", "jinye", "vika", "klpig"],
+				pack1: ["kampui", "austin", "jinye", "vika", "klpig", "wilson", "albert", "shihong", "zsh", "johnson", "khari"],
 				prog2shen: ["shen_kampui", "shen_austin"],
-				tang: ["wilson", "albert"],
-				idk: ["shihong", "zsh"],
+				fengp: ["std_kampui", 'std_austin', 'std_vika', "std_jinye"],
 				sp309: ["sp_kampui", "sp_albert", "sp_austin", "sp_wilson"],
-				prog3: ["re_kampui", "re_austin", "sb_kampui"],
 			},
 		},
 
