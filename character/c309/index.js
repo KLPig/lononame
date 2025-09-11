@@ -2153,17 +2153,32 @@ game.import("character", function () {
 				selectCard: [1, Infinity],
 				position: "he",
 				filterCard: true,
+				lose: false,
+				delay: false,
 				filter: function(event, player){
 					return player.countCards("he") > 0 && !player.countMark("qiuma");
 				},
 				content: function*(event, map){
 					let player = map.player;
-					let hh = player.countCards("h") > 0;
-					let he = player.countCards("e") > 0;
 					let cnt = event.cards.length;
+					let cards = event.cards;
 					player.discard(event.cards);
-					if(hh && !player.countCards("h")) cnt++;
-					if(he && !player.countCards("e")) cnt++;
+					let acnt = 2;
+					let ce = player.getCards("e");
+					let ch = player.getCards("h");
+					acnt -= (!ce.length) + (!ch.length);
+					console.log("ac", acnt);
+					for(var x = 0; x < ce.length; x++){
+						if(!event.cards.includes(ce[x])) {acnt--; break; }
+					}
+					console.log("ac", acnt);
+					for(var x = 0; x < ch.length; x++){
+						if(!event.cards.includes(ch[x])) {acnt--; break; }
+					}
+					console.log("ac", acnt);
+					cnt += acnt;
+					if(acnt)
+					player.chooseToGuanxing(2 * acnt);
 					let result = yield player.judge(function(card){
 						if(cnt > get.number(card)) return 10;
 						return cnt;
@@ -2171,13 +2186,14 @@ game.import("character", function () {
 					if(cnt > result.number){
 						let tricks = [];
 						for(var i in lib.card){
-							let card = lib.card[i];
-							if(card != undefined && get.type(card) == "trick"){
-								tricks.push(card)
-							}
+							if(i != undefined)
+							if(lib.card[i].type == "trick")
+								tricks.push(i)
 						}
 						let trick = tricks.randomGet();
-						player.chooseUseTarget("视为使用" + get.translation(trick.name) + "(" + get.info(trick) + ")", trick, true)
+						let result2 = yield player.chooseButton("是否使用牌？", [[game.createCard2(trick)]]);
+						if(result2.bool)
+						player.chooseUseTarget("视为使用" + get.translation(trick), trick)
 						player.draw(2);
 					}else{
 						player.draw(cnt);
@@ -2190,6 +2206,7 @@ game.import("character", function () {
 						filter: function(event, player){
 							return true;
 						},
+						forced: true,
 						content: function(){
 							player.removeMark("qiuma", player.countMark("qiuma"))
 						}
